@@ -16,6 +16,50 @@
 
 #include QMK_KEYBOARD_H
 
+// https://github.com/qmk/qmk_firmware/blob/master/docs/feature_advanced_keycodes.md#shift--backspace-for-delete-idshift-backspace-for-delete
+// Initialize variable holding the binary
+// representation of active modifiers.
+uint8_t mod_state;
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    // Store the current modifier state in the variable for later reference
+    mod_state = get_mods();
+    switch (keycode) {
+
+        case KC_BSPC:
+        {
+            // Initialize a boolean variable that keeps track
+            // of the delete key status: registered or not?
+            static bool delkey_registered;
+            if (record->event.pressed) {
+                // Detect the activation of either shift keys
+                if (mod_state & MOD_MASK_SHIFT) {
+                    // First temporarily canceling both shifts so that
+                    // shift isn't applied to the KC_DEL keycode
+                    del_mods(MOD_MASK_SHIFT);
+                    register_code(KC_DEL);
+                    // Update the boolean variable to reflect the status of KC_DEL
+                    delkey_registered = true;
+                    // Reapplying modifier state so that the held shift key(s)
+                    // still work even after having tapped the Backspace/Delete key.
+                    set_mods(mod_state);
+                    return false;
+                }
+            } else { // on release of KC_BSPC
+                // In case KC_DEL is still being sent even after the release of KC_BSPC
+                if (delkey_registered) {
+                    unregister_code(KC_DEL);
+                    delkey_registered = false;
+                    return false;
+                }
+            }
+            // Let QMK process the KC_BSPC keycode as usual outside of shift
+            return true;
+        }
+
+    }
+    return true;
+};
+
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 [0] = LAYOUT(
      KC_TAB,    KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,    KC_Y,    KC_U,    KC_I,      KC_O,    KC_P, KC_BSPC,
@@ -42,7 +86,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     XXXXXXX,  KC_F12,   KC_F7,   KC_F8,   KC_F9, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,   XXXXXXX, XXXXXXX, XXXXXXX,
     XXXXXXX,  KC_F11,   KC_F4,   KC_F5,   KC_F6, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,   XXXXXXX, XXXXXXX, XXXXXXX,
     XXXXXXX,  KC_F10,   KC_F1,   KC_F2,   KC_F3, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,   XXXXXXX, XXXXXXX, XXXXXXX,
-    XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,   KC_LALT, XXXXXXX, _______
+    XXXXXXX, XXXXXXX, KC_LALT, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,   KC_LALT, XXXXXXX, _______
   ),
 
 [4] = LAYOUT(
